@@ -110,15 +110,31 @@ ddd = gpucorr.GPUNNNCorrelation(min_sep=50, max_sep=150, nbins=50, nphi_bins=50,
 ddd.process(data_cat, metric='Periodic')      # a treecorr.NNNCorrelation in every other respect
 ```
 
-The full guide (config keys, the Python API, precision modes, the Legendre output format,
-memory and limitations) is in **[USAGE.md](USAGE.md)**. Colab users should start from
-[`notebooks/colab_gpucorr.ipynb`](notebooks/colab_gpucorr.ipynb).
+## Documentation
+
+The full guides are in **[`docs/`](docs/README.md)**:
+
+| guide | contents |
+|---|---|
+| [Installation](docs/installation.md) | local and Google Colab install; checking the setup |
+| [Quick start](docs/quickstart.md) | first ξ and ζ runs, switching methods, comparing with TreeCorr |
+| [Configuration reference](docs/configuration.md) | every config key (TreeCorr and `backend` / `gpu_*`) |
+| [Command line](docs/command-line.md) | `run_corr.py` / `gpucorr`, overrides, batch runs |
+| [Python API](docs/python-api.md) | `GPUOptions`, the correlation classes, reusing RRR across mocks |
+| [Methods](docs/methods.md) | the exact and Legendre algorithms, precision modes, periodic orientation |
+| [Output files](docs/output-files.md) | TreeCorr-format columns and the `*_legendre.txt` multipole file |
+| [Memory and performance](docs/memory-and-performance.md) | VRAM budgeting, Colab, scaling, choosing fast settings |
+| [Validation and benchmarks](docs/validation.md) | reproducing the checks, benchmark and report |
+| [Troubleshooting and FAQ](docs/troubleshooting.md) | error messages, slow runs, limitations |
+
+Colab users can start from [`notebooks/colab_gpucorr.ipynb`](notebooks/colab_gpucorr.ipynb).
 
 ## Repository layout
 
 ```
 gpucorr/          the package: CUDA kernels (kernels.cu), engines, TreeCorr subclasses, CLI
 configs/          example corr2/corr3 config files with the backend / gpu_* keys
+docs/             user guides (Markdown)
 run_corr.py       command-line entry point (same as `gpucorr` / `python -m gpucorr`)
 tests/            consistency checks against TreeCorr and independent brute-force references
 bench/            benchmark script and results (results.md / .csv / .json)

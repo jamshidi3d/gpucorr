@@ -3,7 +3,7 @@
 
 Part 1  independent NumPy brute force (TreeCorr's leaf formulas, P1-centred orientation)
         vs GPU, bin by bin, Euclidean and Periodic.  Also counts the triangles whose 2<->3
-        orientation is ambiguous under TreeCorr's 3D CCW rule (see USAGE.md).
+        orientation is ambiguous under TreeCorr's 3D CCW rule (see docs/methods.md).
 Part 2  TreeCorr exact (bin_slop=0, algo='triangle') vs GPU on random subsamples of the real
         input catalogs: DD, DR, RR -> xi and DDD, DRR, RDD, RRR -> zeta, per config file.
 Part 3  TreeCorr *default* settings (bin_slop default, multipole) vs the exact result, to
