@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gpucorr"
+version = "0.2.0"
+description = "Exact CUDA backend for TreeCorr's NN / NNN (2- and 3-point) correlation functions, with an optional Slepian-Eisenstein multipole mode"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.9"
+dependencies = [
+    "numpy",
+    "treecorr>=5.1",
+    "pyyaml",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: BSD License",
+    "Topic :: Scientific/Engineering :: Astronomy",
+    "Environment :: GPU :: NVIDIA CUDA",
+]
+
+[project.optional-dependencies]
+cuda12 = ["cupy-cuda12x"]
+cuda13 = ["cupy-cuda13x"]
+dev = ["matplotlib", "pytest"]
+
+[project.scripts]
+gpucorr = "gpucorr.run:main"
+
+[tool.setuptools]
+packages = ["gpucorr"]
+
+[tool.setuptools.package-data]
+gpucorr = ["kernels.cu"]

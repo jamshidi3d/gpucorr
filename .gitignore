@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# Input catalogues (not distributed; see input/README.md)
+input/*
+!input/README.md
+
+# Run outputs written next to the configs / in the working directory
+/*.txt
+/*.out
+*_legendre.txt
+
+# Benchmark scratch
+bench/_random_cache.npy
+bench/_cpu_*.json
+bench/results_gpu.json
+bench/results_partial*.json
+*_log.txt
+
+# LaTeX build products (the compiled report PDF is kept)
+report/*.aux
+report/*.log
+report/*.out
+report/*.fls
+report/*.fdb_latexmk
+report/*.synctex.gz
+report/*.toc
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

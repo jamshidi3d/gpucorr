@@ -1,0 +1,220 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage[margin=2.2cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{siunitx}
+\usepackage[font=small,labelfont=bf]{caption}
+\usepackage{microtype}
+\usepackage{xcolor}
+\usepackage[colorlinks=true,linkcolor=blue!50!black,citecolor=blue!50!black,urlcolor=blue!50!black]{hyperref}
+\usepackage{float}
+\usepackage{enumitem}
+\setlist{itemsep=3pt,topsep=4pt}
+\sisetup{group-separator={,},group-minimum-digits=4,exponent-product=\times}
+\renewcommand{\arraystretch}{1.12}
+
+\title{\textbf{GPU (CUDA) versus CPU (TreeCorr) for the matter\\ two- and three-point correlation functions}\\[4pt]
+\large Speed and precision comparison of \texttt{gpucorr} and TreeCorr <<TCVER>>}
+\author{}
+\date{GPU: <<GPU>> \quad CPU: <<CPU>>}
+
+\begin{document}
+\maketitle
+
+\section*{Summary}
+<<SUMMARY>>
+
+\section{Setup}
+\paragraph{Data and binning.} \texttt{input/data.data} (\num{10000} points, unit weights) and
+\texttt{input/random.txt} (\num{500000} points) in a periodic box of side $L=1000$. As in
+\texttt{p2pcfconfig.yaml} and \texttt{p3pcfconfig.yaml}: 50 logarithmic bins in $50\le r<150$ and,
+for the 3PCF (\texttt{LogSAS}), 50 bins in the opening angle $\phi\in[0,\pi)$.
+
+\paragraph{Estimators.} Landy--Szalay $\xi=(DD-2DR+RR)/RR$ and the full three-point estimator
+\begin{equation}
+  \zeta(d_2,d_3,\phi)=\frac{DDD-RDD+DRR-RRR}{RRR},
+\end{equation}
+with TreeCorr's normalisation factors. Both backends use TreeCorr's own \texttt{calculateXi},
+\texttt{calculateZeta} and \texttt{write}; only the pair/triangle accumulation differs.
+
+\paragraph{Configuration.} The same config files drive every method:
+\texttt{backend: cpu|cuda}, and on the GPU \texttt{gpu\_method: exact|legendre} with
+\texttt{gpu\_lmax}, \texttt{gpu\_precision: mixed|double} and \texttt{max\_vram\_gb}.
+
+<<SETUP_TABLE>>
+
+\section{Speed}
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.9\textwidth]{fig_scaling.pdf}
+\caption{Wall time of all seven terms versus the number of randoms. Solid: measured; dashed:
+per-term power-law extrapolation beyond the \SI{600}{s} CPU cap. The TreeCorr \texttt{triangle}
+and exact curves coincide.}
+\label{fig:scaling}
+\end{figure}
+
+<<SPEED_TABLE>>
+
+At fixed box volume the number of triangles grows as $N^3$, so RRR dominates at large
+$N_\mathrm{rand}$ (Fig.~\ref{fig:terms}). The GPU sustains $\sim\num{8e9}$ neighbour pairs per
+second at the density of the full random catalogue. TreeCorr's \texttt{multipole} algorithm
+scales almost linearly in $N$, which is why it overtakes exact counting at $N_\mathrm{rand}\approx\num{500000}$.
+As Sec.~\ref{sec:mp3d} shows, however, its result is incorrect for 3D catalogues.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.88\textwidth]{fig_terms.pdf}
+\caption{Share of the GPU time spent in each term; the total is printed above each bar.}
+\label{fig:terms}
+\end{figure}
+
+<<TERMS_TABLE>>
+
+\paragraph{Bounded memory.} <<VRAM>>
+
+\section{Precision of the exact GPU method}
+\subsection{Independent brute force}
+The reference applies TreeCorr's leaf-level formulas directly to every triple and shares no code
+with the GPU implementation.
+
+<<P1_TABLE>>
+
+\subsection{TreeCorr exact on the real catalogues}
+<<P2E_TABLE>>
+
+<<P2P_TABLE>>
+
+\section{Interpretation}
+\paragraph{Counts and $\zeta$.} The integer counts are exact in both GPU precisions. With unit
+weights the weights and $\zeta$, which depend only on them, are exact as well. Agreement with
+exact TreeCorr is therefore bitwise in the Euclidean metric.
+
+\paragraph{Mean columns.} In the default \emph{mixed} precision, $\bar d_1,\dots,\bar\phi$ are
+accumulated from fp32 geometry ($\sim\num{1e-6}$ relative). \texttt{gpu\_precision: double}
+evaluates every triangle with fp64 TreeCorr formulas and sums in exact 64-bit fixed point
+(\numrange{1e-12}{1e-15}), at roughly $1/10$--$1/20$ of the speed on consumer GPUs.
+
+\paragraph{Periodic orientation.}\label{sec:orient} TreeCorr labels $d_2/d_3$ with
+$\operatorname{sign}[(\mathbf r_{13}\times\mathbf r_{12})\cdot\mathbf p_1]$, a dot product with the
+\emph{absolute} position of a vertex. In the auto-correlation it evaluates this once, at whichever
+vertex its tree traversal reaches first, and reuses it for all three rotations. For triangles that
+straddle the periodic boundary the sign differs between vertices (<<AMBIG>> rotations in the
+brute-force test). TreeCorr's own assignment therefore depends on traversal order. \texttt{gpucorr}
+always applies the test at $P_1$. This only moves triangles between the mirror bins $(k_2,k_3)$ and
+$(k_3,k_2)$, which for a statistically isotropic box is pure relabelling.
+
+\subsection{TreeCorr's default 3PCF algorithm in 3D}\label{sec:mp3d}
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.85\textwidth]{fig_multipole.pdf}
+\caption{$\phi$-distribution of RRR for \num{20000} randoms from \texttt{input/random.txt} (periodic
+box), summed over all $(d_2,d_3)$. For uniform randoms the true distribution follows $\sin\phi$
+(GPU exact and TreeCorr \texttt{triangle} coincide). TreeCorr's \texttt{multipole} algorithm returns an
+essentially flat distribution.}
+\label{fig:mp}
+\end{figure}
+
+<<MP_TABLE>>
+
+<<MP_TEXT>> The multipole path should therefore not be used for 3D box 3PCFs with TreeCorr <<TCVER>>.
+Use \texttt{algo: triangle} on the CPU, or either GPU method.
+
+%%LEG-BEGIN
+\section{Legendre multipole mode (Slepian \& Eisenstein) versus exact counting}\label{sec:legendre}
+\paragraph{Method.} With \texttt{gpu\_method: legendre}, \texttt{gpucorr} computes for every
+centre $c$ and radial bin $k$
+\begin{equation}
+  a_{\ell m}(c,k)=\sum_{j\in k} w_j\,Y_{\ell m}(\hat{\mathbf r}_{cj}),
+\end{equation}
+using fully normalised associated Legendre functions with a stable three-term recursion. The
+addition theorem then gives the Legendre moments of the triangle counts as a matrix product over
+all centres:
+\begin{equation}
+  M_\ell(k_2,k_3)=\sum_c w_c\!\!\sum_{\substack{j\in k_2,\,l\in k_3\\ j\neq l}}\!\! w_j w_l\,P_\ell(\cos\phi_{jl})
+  =\frac{4\pi}{2\ell+1}\sum_c w_c\Big[a_{\ell0}a_{\ell0}^{*}+2\,\mathrm{Re}\sum_{m>0}a_{\ell m}(k_2)\,a_{\ell m}^{*}(k_3)\Big]-\delta_{k_2k_3}\,S,
+\end{equation}
+where $S$ removes the self-pairs. The cost scales as $N\,n\,\ell_\mathrm{max}^2$ instead of
+$N\,n^2$. The multipoles of every term are written to \texttt{<file>\_legendre.txt}, with
+$\zeta_\ell=Z_\ell/(RRR_0 f)$ so that $\zeta(\phi)\simeq\sum_\ell(2\ell+1)\,\zeta_\ell\,P_\ell(\cos\phi)$.
+The usual TreeCorr file receives $\phi$ bins reconstructed from the truncated series,
+\begin{equation}
+  N(\phi_a<\phi<\phi_b)=\sum_{\ell\le\ell_\mathrm{max}}\frac{2\ell+1}{2}\,M_\ell\int_{\cos\phi_b}^{\cos\phi_a}P_\ell(\mu)\,d\mu,
+\end{equation}
+symmetric in $d_2\leftrightarrow d_3$ (the method has no 3D orientation).
+
+\paragraph{Correctness.} Against an independent NumPy brute force of $\sum P_\ell(\cos\phi)$ over
+every triangle (\num{2000} points, $\ell\le12$), the multipoles agree to \num{4e-16} in double
+precision and \num{3e-7} in mixed precision, in both metrics. On the real catalogues the monopole
+equals the exact triangle total of every term (largest relative difference <<LEG_MONO>>).
+
+\subsection{Comparison in \texorpdfstring{$\phi$}{phi} bins}
+<<LEG_BIN_TABLE>>
+
+The per-bin differences are of the size of the Poisson noise of the exact counts. A truncated
+Legendre series removes the high-$\ell$ part of that noise, so $\Delta\zeta\approx1\sigma$ at small
+$\ell_\mathrm{max}$, decreasing towards $\ell_\mathrm{max}=49$ (50 $\phi$ bins). The difference is
+mostly noise filtering rather than bias: the smooth angular signal is captured already at
+$\ell_\mathrm{max}\approx10$ (Fig.~\ref{fig:legzeta}).
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{fig_leg_zeta.pdf}
+\caption{$\zeta(\phi)$ in two $(d_2,d_3)$ bins: exact counting with shot-noise error bars, and
+reconstructions from the Legendre mode.}
+\label{fig:legzeta}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.8\textwidth]{fig_leg_conv.pdf}
+\caption{Convergence of the $\phi$-binned reconstruction with $\ell_\mathrm{max}$.}
+\label{fig:legconv}
+\end{figure}
+
+\subsection{Comparison in multipole space}
+<<LEG_ML_TABLE>>
+
+The monopole agrees to \num{1e-5}. The higher multipoles differ by an amount set by the
+\emph{exact} method's $\phi$-binning: with 200 instead of 50 bins the difference falls about
+fourfold and converges to the Legendre values. For multipole analyses the Legendre mode is
+therefore the more accurate of the two, being exact up to round-off.
+
+\subsection{Speed}
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.85\textwidth]{fig_leg_timing.pdf}
+\caption{3PCF wall time of the exact and Legendre GPU methods ($N_\mathrm{data}=\num{10000}$).}
+\label{fig:legtime}
+\end{figure}
+
+<<LEG_TIME_TABLE>>
+
+The Legendre cost grows with the number of neighbour pairs ($\propto N n$), exact counting with the
+number of triangles ($\propto N n^2$), so the advantage increases with density. At small $N$ the
+fixed costs (neighbour lists, per-$\ell$ matrix products) dominate.
+%%LEG-END
+
+\section{Recommendations}
+\begin{itemize}
+\item Multipole analyses ($\zeta_\ell$): \texttt{backend: cuda}, \texttt{gpu\_method: legendre}
+      ($\ell_\mathrm{max}\approx10$). The multipoles are exact, and at high density the method is
+      much faster.
+\item $\phi$-binned 3PCF: \texttt{backend: cuda} with the default \texttt{gpu\_method: exact},
+      \texttt{gpu\_precision: mixed}. Counts, weights and $\zeta$ are exact; the means are good to
+      \num{1e-6}.
+\item When the mean columns must match TreeCorr to machine precision: \texttt{gpu\_precision: double}.
+\item CPU cross-checks: \texttt{algo: triangle} (or \texttt{bin\_slop: 0} on subsamples), not the
+      default \texttt{multipole} algorithm.
+\item Colab or smaller GPUs: set \texttt{max\_vram\_gb}; results do not depend on it.
+\end{itemize}
+
+\paragraph{Reproduction.} \texttt{python tests/validate\_vs\_treecorr.py};
+\texttt{python bench/benchmark.py}; \texttt{python tests/check\_legendre.py};
+\texttt{python tests/compare\_legendre.py}; \texttt{python report/make\_report\_tex.py}.
+
+\end{document}
