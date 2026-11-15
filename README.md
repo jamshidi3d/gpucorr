@@ -49,7 +49,7 @@ from 50 to 150 and 50 φ bins, on an RTX 4070 Laptop GPU. The full results are i
 ## Install
 
 ```bash
-git clone https://github.com/<user>/gpucorr && cd gpucorr
+git clone https://github.com/jamshidi3d/gpucorr && cd gpucorr
 pip install -e ".[cuda12]"      # CUDA 12 (Colab); use ".[cuda13]" for a CUDA 13 driver
 ```
 

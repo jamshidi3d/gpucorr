@@ -22,7 +22,7 @@ The output files therefore have exactly TreeCorr's columns and format.
 ## Install
 
 ```bash
-git clone https://github.com/<user>/gpucorr && cd gpucorr
+git clone https://github.com/jamshidi3d/gpucorr && cd gpucorr
 pip install -e ".[cuda12]"     # CUDA 12 driver (e.g. Google Colab, where CuPy is preinstalled anyway)
 pip install -e ".[cuda13]"     # CUDA 13 driver
 ```
